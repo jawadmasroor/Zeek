@@ -1,0 +1,89 @@
+Create a File with Monitored IP Addresses:
+Create a file, for example, monitored_ips.txt, and list the IP addresses you want to monitor, one per line.
+
+text
+
+192.168.1.1
+192.168.1.2
+10.0.0.1
+
+Create the Zeek Script:
+Create a new Zeek script, dns_monitor.zeek, which reads the IP addresses from the file and monitors DNS logs.
+
+zeek
+
+# /usr/local/zeek/share/zeek/site/dns_monitor.zeek
+
+# Load the base framework for notices
+@load base/frameworks/notice
+
+# Function to read monitored IPs from a file
+function read_monitored_ips(file: string): set[addr] {
+    local ips: set[addr] = set();
+    local f = open(file);
+    if ( f == null )
+        return ips;
+
+    local line: string;
+    while ( (line = file_next_line(f)) != "" ) {
+        if ( line == "" )
+            continue;
+
+        local ip = to_addr(line);
+        if ( ip != nil )
+            add ips[ip];
+        else
+            print fmt("Invalid IP address in monitored IPs file: %s", line);
+    }
+    close(f);
+    return ips;
+}
+
+# Define the file path for monitored IPs
+const monitored_ips_file = "/usr/local/zeek/share/zeek/site/monitored_ips.txt";
+
+# Global set of monitored IPs
+global monitored_ips: set[addr] = read_monitored_ips(monitored_ips_file);
+
+# Event to handle DNS responses
+event dns_response(c: connection, msg: dns_msg, query: string, answer: dns_answer, orig_rtt: interval)
+{
+    for (i in answer)
+    {
+        if ( answer[i]?$A && answer[i]$A in monitored_ips )
+        {
+            local note = Notice::Log;
+            local msg = fmt("Monitored IP %s found in DNS answer field", answer[i]$A);
+            NOTICE([$note=note, $msg=msg, $sub=fmt("DNS query for %s", query), $conn=c]);
+        }
+    }
+}
+
+Update the local.zeek File to Load the New Script:
+Edit your local.zeek file to load the new dns_monitor.zeek script.
+
+zeek
+
+@load ./dns_monitor.zeek
+
+Make sure the path to dns_monitor.zeek is correct relative to the location of local.zeek.
+
+Restart Zeek:
+After making these changes, restart the Zeek service to apply the new configuration.
+
+bash
+
+    sudo zeekctl deploy
+
+    Verify the Configuration:
+    Ensure that Zeek is running correctly and that it logs notices when any of the monitored IP addresses appear in the DNS answer field. You can check the notice.log for these alerts.
+
+Explanation of the Script:
+
+    Loading Notice Framework: The script begins by loading the base notice framework, which is required to generate notices.
+    Reading Monitored IPs: The read_monitored_ips function reads the IP addresses from the monitored_ips.txt file and stores them in a set.
+    Global Set of Monitored IPs: The global variable monitored_ips holds the set of IP addresses read from the file.
+    Handling DNS Responses: The dns_response event handler processes DNS responses and checks if any of the answers match the monitored IPs.
+    Generating Notices: If a monitored IP is found in the answer field, the script generates a notice with a message indicating that the monitored IP was found.
+
+This setup allows you to easily manage the list of IP addresses to monitor by simply updating the monitored_ips.txt file.
