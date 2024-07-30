@@ -28,3 +28,15 @@ event dns_response(c: connection, msg: dns_msg, query: string, answer: dns_answe
         }
     }
 }
+
+
+error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 15: orphaned field "fields" in record coercion ((coerce [$source=monitored_ips_file, $name=monitored_ips, $mode=Input::STREAM, $fields=Input::READER_RAW, $destination=monitored_ips, $include=set(record)] to Input::TableDescription))
+error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 21: target to iterate over must be a table, set, vector, or string (answer)
+error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 21: undeclared variable (i)
+error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 23: expression with type 'record' is not a type that can be indexed (answer[i])
+error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 23: expression with type 'record' is not a type that can be indexed (answer[i])
+error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 26: expression with type 'record' is not a type that can be indexed (answer[i])
+error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 19 and /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 26: already defined (msg)
+error in /opt/zeek/share/zeek/base/frameworks/notice/./main.zeek, lines 67-183 and /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 27: incompatible record types (Notice::Info and [$note=note, $msg=msg, $sub=fmt(DNS query for %s, query), $conn=c])
+error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 27 and /opt/zeek/share/zeek/base/frameworks/notice/./main.zeek, lines 67-183: type mismatch ([$note=note, $msg=msg, $sub=fmt(DNS query for %s, query), $conn=c] and Notice::Info)
+error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 27: argument type mismatch in function call (NOTICE([$note=note, $msg=msg, $sub=fmt(DNS query for %s, query), $conn=c]))
