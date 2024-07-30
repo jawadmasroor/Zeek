@@ -1,26 +1,26 @@
-# /usr/local/zeek/share/zeek/site/dns_monitor.zeek
+# /opt/zeek/share/zeek/site/dns_monitor.zeek
 
 # Load the base framework for notices and Input framework
 @load base/frameworks/notice
 @load base/frameworks/input
 
 # Define the file path for monitored IPs
-const monitored_ips_file = "/usr/local/zeek/share/zeek/site/monitored_ips.txt";
+const monitored_ips_file = "/opt/zeek/share/zeek/site/monitored_ips.txt";
 
 # Global set of monitored IPs
 global monitored_ips: set[addr] = set();
 
 # Input handler to read IPs from file
 event zeek_init() {
-    Input::add_event([$source=monitored_ips_file, $name="monitored_ips", $fields=Input::READER_AUTO, $ev=read_ip]);
+    Input::add_event([$source=monitored_ips_file, $name="monitored_ips", $fields=Input::READER_RAW, $ev=read_ip]);
 }
 
 event read_ip(rec: Input::Event) {
-    local ip = to_addr(rec$fields[0]);
+    local ip = to_addr(rec$records[0]);
     if (ip != nil) {
         add monitored_ips[ip];
     } else {
-        print fmt("Invalid IP address in monitored IPs file: %s", rec$fields[0]);
+        print fmt("Invalid IP address in monitored IPs file: %s", rec$records[0]);
     }
 }
 
