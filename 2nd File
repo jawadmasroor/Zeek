@@ -1,8 +1,8 @@
 # /usr/local/zeek/share/zeek/site/dns_monitor.zeek
 
-# Load the base framework for notices
+# Load the base framework for notices and Input framework
 @load base/frameworks/notice
-@load base/utils/whitelists
+@load base/frameworks/input
 
 # Define the file path for monitored IPs
 const monitored_ips_file = "/usr/local/zeek/share/zeek/site/monitored_ips.txt";
@@ -10,34 +10,30 @@ const monitored_ips_file = "/usr/local/zeek/share/zeek/site/monitored_ips.txt";
 # Global set of monitored IPs
 global monitored_ips: set[addr] = set();
 
-# Event to handle DNS responses
-event dns_response(c: connection, msg: dns_msg, query: string, answer: dns_answer, orig_rtt: interval)
-{
-    for (i in answer)
-    {
-        if ( answer[i]?$A && answer[i]$A in monitored_ips )
-        {
-            local note = Notice::Log;
-            local msg = fmt("Monitored IP %s found in DNS answer field", answer[i]$A);
-            NOTICE([$note=note, $msg=msg, $sub=fmt("DNS query for %s", query), $conn=c]);
-        }
+# Input handler to read IPs from file
+event zeek_init() {
+    Input::add_event([$source=monitored_ips_file, $name="monitored_ips", $fields=Input::READER_AUTO, $ev=read_ip]);
+}
+
+event read_ip(rec: Input::Event) {
+    local ip = to_addr(rec$fields[0]);
+    if (ip != nil) {
+        add monitored_ips[ip];
+    } else {
+        print fmt("Invalid IP address in monitored IPs file: %s", rec$fields[0]);
     }
 }
 
-# Input framework to read monitored IPs from file
-redef enum Input::READER += { Input::READER_WHITELIST };
-Input::add_table([
-    $source=monitored_ips_file,
-    $reader=Input::READER_WHITELIST,
-    $name="monitored_ips",
-    $destination=monitored_ips
-]);
-
-
-
-worker-1-10 scripts failed.
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 17: target to iterate over must be a table, set, vector, or string (answer)
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 17: undeclared variable (i)
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 19: expression with type 'record' is not a type that can be indexed (answer[i])
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 19: expression with type 'record' is not a type that can be indexed (answer[i])
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 21: unknown identifier Notice::Log, at or near "Notice::Log"
+# Event to handle DNS responses
+event dns_response(c: connection, msg: dns_msg, answer: dns_answer)
+{
+    for (a in answer)
+    {
+        if (a?$A && a$A in monitored_ips)
+        {
+            local note = Notice::LOG;
+            local msg = fmt("Monitored IP %s found in DNS answer field", a$A);
+            NOTICE([$note=note, $msg=msg, $sub=fmt("DNS query for %s", msg$qname), $conn=c]);
+        }
+    }
+}
