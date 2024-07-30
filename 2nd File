@@ -12,31 +12,25 @@ global monitored_ips: set[addr] = set();
 
 # Input handler to read IPs from file
 event zeek_init() {
-    Input::add_table([$source=monitored_ips_file, $name="monitored_ips", $mode=Input::STREAM, $fields=Input::READER_RAW, $destination=monitored_ips, $include=set("record")]);
+    Input::add_table([$source=monitored_ips_file, $name="monitored_ips", $mode=Input::STREAM, $fields=Input::READER_RAW, $destination=monitored_ips, $config=Input::parse_set]);
 }
 
-# Event to handle DNS responses
-event dns_response(c: connection, msg: dns_msg, query: string, answer: dns_answer, orig_rtt: interval)
-{
-    for (i in answer)
-    {
-        if ( answer[i]?$A && answer[i]$A in monitored_ips )
-        {
-            local note = Notice::LOG;
-            local msg = fmt("Monitored IP %s found in DNS answer field", answer[i]$A);
-            NOTICE([$note=note, $msg=msg, $sub=fmt("DNS query for %s", query), $conn=c]);
-        }
+# Input event to read the IP addresses
+event monitored_ips_update(rec: Input::Event) {
+    local ip = to_addr(rec$record);
+    if (ip != nil) {
+        add monitored_ips[ip];
+    } else {
+        print fmt("Invalid IP address in monitored IPs file: %s", rec$record);
     }
 }
 
-
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 15: orphaned field "fields" in record coercion ((coerce [$source=monitored_ips_file, $name=monitored_ips, $mode=Input::STREAM, $fields=Input::READER_RAW, $destination=monitored_ips, $include=set(record)] to Input::TableDescription))
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 21: target to iterate over must be a table, set, vector, or string (answer)
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 21: undeclared variable (i)
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 23: expression with type 'record' is not a type that can be indexed (answer[i])
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 23: expression with type 'record' is not a type that can be indexed (answer[i])
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 26: expression with type 'record' is not a type that can be indexed (answer[i])
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 19 and /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 26: already defined (msg)
-error in /opt/zeek/share/zeek/base/frameworks/notice/./main.zeek, lines 67-183 and /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 27: incompatible record types (Notice::Info and [$note=note, $msg=msg, $sub=fmt(DNS query for %s, query), $conn=c])
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 27 and /opt/zeek/share/zeek/base/frameworks/notice/./main.zeek, lines 67-183: type mismatch ([$note=note, $msg=msg, $sub=fmt(DNS query for %s, query), $conn=c] and Notice::Info)
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 27: argument type mismatch in function call (NOTICE([$note=note, $msg=msg, $sub=fmt(DNS query for %s, query), $conn=c]))
+# Event to handle DNS responses
+event dns_response(c: connection, msg: dns_msg, query: string, answer: dns_answer, orig_rtt: interval) {
+    for (i in answer) {
+        if (i?$A && i$A in monitored_ips) {
+            local notice_msg = fmt("Monitored IP %s found in DNS answer field", i$A);
+            NOTICE([$note=Notice::LOG, $msg=notice_msg, $sub=fmt("DNS query for %s", query), $conn=c]);
+        }
+    }
+}
