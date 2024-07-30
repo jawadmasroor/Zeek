@@ -12,28 +12,19 @@ global monitored_ips: set[addr] = set();
 
 # Input handler to read IPs from file
 event zeek_init() {
-    Input::add_event([$source=monitored_ips_file, $name="monitored_ips", $fields=Input::READER_RAW, $ev=read_ip]);
-}
-
-event read_ip(rec: Input::Event) {
-    local ip = to_addr(rec$record);
-    if (ip != nil) {
-        add monitored_ips[ip];
-    } else {
-        print fmt("Invalid IP address in monitored IPs file: %s", rec$record);
-    }
+    Input::add_table([$source=monitored_ips_file, $name="monitored_ips", $mode=Input::STREAM, $fields=Input::READER_RAW, $destination=monitored_ips, $include=set("record")]);
 }
 
 # Event to handle DNS responses
-event dns_response(c: connection, msg: dns_msg, answer: dns_answer)
+event dns_response(c: connection, msg: dns_msg, query: string, answer: dns_answer, orig_rtt: interval)
 {
-    for (a in answer)
+    for (i in answer)
     {
-        if (a?$A && a$A in monitored_ips)
+        if ( answer[i]?$A && answer[i]$A in monitored_ips )
         {
             local note = Notice::LOG;
-            local msg = fmt("Monitored IP %s found in DNS answer field", a$A);
-            NOTICE([$note=note, $msg=msg, $sub=fmt("DNS query for %s", msg$qname), $conn=c]);
+            local msg = fmt("Monitored IP %s found in DNS answer field", answer[i]$A);
+            NOTICE([$note=note, $msg=msg, $sub=fmt("DNS query for %s", query), $conn=c]);
         }
     }
 }
