@@ -32,3 +32,12 @@ Input::add_table([
     $name="monitored_ips",
     $destination=monitored_ips
 ]);
+
+
+
+worker-1-10 scripts failed.
+error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 17: target to iterate over must be a table, set, vector, or string (answer)
+error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 17: undeclared variable (i)
+error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 19: expression with type 'record' is not a type that can be indexed (answer[i])
+error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 19: expression with type 'record' is not a type that can be indexed (answer[i])
+error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 21: unknown identifier Notice::Log, at or near "Notice::Log"
