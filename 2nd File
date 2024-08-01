@@ -12,7 +12,7 @@ global monitored_ips: set[addr] = set();
 
 # Input handler to read IPs from file
 event zeek_init() {
-    Input::add_table([$source=monitored_ips_file, $name="monitored_ips", $fields=Input::READER_RAW, $destination=monitored_ips]);
+    Input::add_table([$source=monitored_ips_file, $name="monitored_ips", $mode=Input::READ_ONCE, $fields=Input::READER_DEFAULT, $destination=monitored_ips, $types=addr]);
 }
 
 # Event to handle DNS responses
@@ -24,8 +24,3 @@ event dns_response(c: connection, msg: dns_msg, query: string, answer: dns_answe
         }
     }
 }
-
-
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 15: orphaned field "fields" in record coercion ((coerce [$source=monitored_ips_file, $name=monitored_ips, $fields=Input::READER_RAW, $destination=monitored_ips] to Input::TableDescription))
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 20: target to iterate over must be a table, set, vector, or string (answer)
-error in /opt/zeek/share/zeek/site/./dns_monitor.zeek, line 20: undeclared variable (a)
