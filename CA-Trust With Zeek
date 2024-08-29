@@ -1,1 +1,15 @@
+###
+### Trusted CA
+###
+
+#### https://old.zeek.org/current/solutions/extending/index.html
+#### https://threathuntingtails.com/zeek-load-certificates-to-zeek/
+
+####convert each CA cert to der and then hex using “openssl x509 -in cert.pem -outform DER | hexdump -v -e '1/1 \\\x' -e '1/1 "%02X"' > cert-hex”
+
+#### ["SomeDescriptiveName"] = "Cert HEX"
+#### redef SSL::root_certs += {
+#### ["KSNGlobalRootCAECC"] = "\x30\x82\x02\x52...",
+#### ["test 2"] = "\x30\x82..."
+#### };
 
