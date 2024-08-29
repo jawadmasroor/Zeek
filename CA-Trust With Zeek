@@ -37,17 +37,26 @@ input_file="ca-bundle.trust.crt"
 output_dir="certs"
 mkdir -p $output_dir
 
-# Split the CA bundle into individual certificate files
-csplit -f $output_dir/cert- $input_file '/-----BEGIN CERTIFICATE-----/' '{*}'
+# Split the CA bundle into individual certificate files, including their descriptions
+awk -v outdir="$output_dir" '
+    /^#/{desc=$0; next} 
+    /-----BEGIN CERTIFICATE-----/{
+        file=outdir "/cert-" ++i ".pem"
+        print desc > file
+        print $0 > file
+        next
+    } 
+    {print >> file}
+' $input_file
 
 # Initialize the Zeek configuration output
 zeek_config="zeek_root_certs.zeek"
 echo 'redef SSL::root_certs += {' > $zeek_config
 
 # Process each certificate
-for cert in $output_dir/cert-*; do
-    # Extract the certificate's subject or a unique identifier as a name
-    name=$(openssl x509 -in $cert -noout -subject | awk -F'= ' '{print $NF}' | tr -d '[:space:]' | tr -d '/')
+for cert in $output_dir/cert-*.pem; do
+    # Extract the descriptive name from the comment line
+    name=$(head -n 1 $cert | sed 's/#//;s/[[:space:]]//g')  # Removes # and trims whitespace
     # Convert the certificate to DER and then to HEX
     der_hex=$(openssl x509 -in $cert -outform DER | hexdump -v -e '1/1 "\\\x" -e "1/1 \"%02X\""')
     # Append to the Zeek config
@@ -58,6 +67,7 @@ done
 echo '};' >> $zeek_config
 
 echo "Zeek configuration written to $zeek_config"
+
 
 Explanation
 
