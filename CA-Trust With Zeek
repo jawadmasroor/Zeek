@@ -13,3 +13,69 @@
 #### ["test 2"] = "\x30\x82..."
 #### };
 
+
+To convert all the CA certificates listed in the ca-bundle.trust.crt file to the required DER and hex format for Zeek, you can follow these steps. We'll extract each certificate, convert it to DER, and then to the required hex format.
+Step-by-Step Guide
+
+    Split the ca-bundle.trust.crt File:
+        The ca-bundle.trust.crt file typically contains multiple CA certificates in PEM format, concatenated together. You can split them into individual files using a command that looks for the start of each certificate.
+
+    Convert Each Certificate:
+        Convert each PEM file to DER and then to hex format as required by Zeek.
+
+    Generate Zeek Format Entries:
+        Create the formatted entries for the SSL::root_certs set in Zeek.
+
+Here’s a script that automates these steps:
+
+bash
+
+#!/bin/bash
+
+# Define the input file and output directory
+input_file="ca-bundle.trust.crt"
+output_dir="certs"
+mkdir -p $output_dir
+
+# Split the CA bundle into individual certificate files
+csplit -f $output_dir/cert- $input_file '/-----BEGIN CERTIFICATE-----/' '{*}'
+
+# Initialize the Zeek configuration output
+zeek_config="zeek_root_certs.zeek"
+echo 'redef SSL::root_certs += {' > $zeek_config
+
+# Process each certificate
+for cert in $output_dir/cert-*; do
+    # Extract the certificate's subject or a unique identifier as a name
+    name=$(openssl x509 -in $cert -noout -subject | awk -F'= ' '{print $NF}' | tr -d '[:space:]' | tr -d '/')
+    # Convert the certificate to DER and then to HEX
+    der_hex=$(openssl x509 -in $cert -outform DER | hexdump -v -e '1/1 "\\\x" -e "1/1 \"%02X\""')
+    # Append to the Zeek config
+    echo "    [\"$name\"] = \"$der_hex\"," >> $zeek_config
+done
+
+# Finalize the Zeek configuration output
+echo '};' >> $zeek_config
+
+echo "Zeek configuration written to $zeek_config"
+
+Explanation
+
+    Splitting Certificates:
+        The csplit command splits the ca-bundle.trust.crt file into individual certificate files, each starting with -----BEGIN CERTIFICATE-----.
+
+    Converting Certificates:
+        For each split certificate, the script uses OpenSSL to extract a unique name based on the certificate’s subject, convert it to DER, and then format it in hex.
+
+    Generating Zeek Configuration:
+        The formatted hex values are added to a Zeek script file zeek_root_certs.zeek, which can be loaded into Zeek.
+
+Final Steps
+
+After running the script:
+
+    Review the zeek_root_certs.zeek file to ensure all certificates are correctly formatted.
+    Load the generated Zeek configuration file in your Zeek environment using @load or directly integrating it into your scripts.
+
+If you have specific adjustments or additional requirements, let me know!
+
